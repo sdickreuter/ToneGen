@@ -69,7 +69,7 @@ class SliderGroup(Knob):
         self.sliderLabel = wx.StaticText(parent, label=label)
         self.sliderText = wx.TextCtrl(parent, -1, style=wx.TE_PROCESS_ENTER)
         self.slider = wx.Slider(parent, -1)
-        self.slider.SetMax(param.maximum * 1000)
+        self.slider.SetMax(param.maximum)
         self.setKnob(param.value)
 
         sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -85,7 +85,7 @@ class SliderGroup(Knob):
         self.param.attach(self)
 
     def sliderHandler(self, evt):
-        value = evt.GetInt() / 1000.
+        value = evt.GetInt()
         self.param.set(value)
 
     def sliderTextHandler(self, evt):
@@ -94,7 +94,7 @@ class SliderGroup(Knob):
 
     def setKnob(self, value):
         self.sliderText.SetValue('%g' % value)
-        self.slider.SetValue(value * 1000)
+        self.slider.SetValue(value)
 
 
 class RootNoteSliderGroup(Knob):
@@ -167,7 +167,7 @@ class FourierDemoWindow(wx.Window, Knob):
         self.rootnoteindex = Param(0, minimum=0, maximum=len(tones.tones)-1)
         self.dx0 = Param(0., minimum=-10., maximum=10.)
         self.width = Param(100., minimum=1., maximum=1000.)
-        self.n = Param(1, minimum=1, maximum=100)
+        self.n = Param(1, minimum=1, maximum=32)
         self.draw()
 
         # Not sure I like having two params attached to the same Knob,
@@ -209,6 +209,9 @@ class FourierDemoWindow(wx.Window, Knob):
     #
     # def mouseUp(self, evt):
     #     self.state = ''
+    def plot_lines(self):
+        pass
+
 
     def draw(self):
         if not hasattr(self, 'subplot1'):
@@ -218,9 +221,8 @@ class FourierDemoWindow(wx.Window, Knob):
         #print(list(tones.tones.values())[self.rootnoteindex.value])
         x1, y1, x2, y2 = self.compute(list(tones.tones.values())[self.rootnoteindex.value], int(self.n.value),
                                       self.width.value, self.dx0.value)
-        color = (1., 0., 0.)
-        self.lines = self.subplot1.plot(x1, y1, color=color, linewidth=2)
-        self.lines += self.subplot2.plot(x2, y2, color=color, linewidth=2)
+        self.line1 = self.subplot1.semilogx(x1, y1,'bo')
+        self.line2 = self.subplot2.plot(x2, y2)
         # Set some plot attributes
         #self.subplot1.set_title("Click and drag waveforms to change frequency and amplitude", fontsize=12)
         self.subplot1.set_ylabel("amplitude", fontsize=8)
@@ -237,11 +239,16 @@ class FourierDemoWindow(wx.Window, Knob):
         #                   verticalalignment='top', transform=self.subplot2.transAxes)
         #self.subplot1.autoscale(enable=True, axis='both')
         #self.subplot2.autoscale(enable=True, axis='both')
+        self.figure.tight_layout()
 
     def compute(self, rootnote, n, env_x0, env_width):
         tones = shepard.ShepardTone(rootnote,n, env_x0, env_width)
-        x1,y1 = tones.get_spectrum()
-        return x1, y1, x1, y1
+        tones.calc_spectrum()
+        x2,y2 = tones.get_waveform()
+        #x1,y1 = tones.calc_fft(x2,y2)
+        x1 = tones.freqs
+        y1 = tones.amps
+        return x1, y1, x2, y2
 
     def repaint(self):
         self.canvas.draw()
@@ -250,9 +257,12 @@ class FourierDemoWindow(wx.Window, Knob):
         # Note, we ignore value arg here and just go by state of the params
         x1, y1, x2, y2 = self.compute(list(tones.tones.values())[self.rootnoteindex.value], int(self.n.value),
                                       self.width.value, self.dx0.value)
-        setp(self.lines[0], xdata=x1, ydata=y1)
-        setp(self.lines[1], xdata=x2, ydata=y2)
-        self.subplot1.set_xlim([x1.min(), x1.max()])
+        #print(x1)
+        #print(y1)
+        setp(self.line1, xdata=x1, ydata=y1)
+        setp(self.line2, xdata=x2, ydata=y2)
+
+        self.subplot1.set_xlim([x1.min(), list(tones.tones.values())[self.rootnoteindex.value]*(2**int(self.n.value))])
         self.subplot1.set_ylim([y1.min(), y1.max()])
         self.subplot2.set_xlim([x2.min(), x2.max()])
         self.subplot2.set_ylim([y2.min(), y2.max()])
@@ -261,7 +271,7 @@ class FourierDemoWindow(wx.Window, Knob):
 
 class App(wx.App):
     def OnInit(self):
-        self.frame1 = FourierDemoFrame(parent=None, title="Fourier Demo", size=(640, 480))
+        self.frame1 = FourierDemoFrame(parent=None, title="Fourier Demo", size=(700, 600))
         self.frame1.Show()
         return True
 
