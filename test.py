@@ -28,14 +28,19 @@ def callback(outdata, frames, time, status):
     #print(time.inputBufferAdcTime + frames/sample_rate)
     t = np.linspace(time.inputBufferAdcTime, time.inputBufferAdcTime + frames/sample_rate, frames)
     if time.inputBufferAdcTime < T:
-        outdata[:,0] = np.sin(A_freq * t * 2 * np.pi)
+        audio = np.sin(A_freq * t * 2 * np.pi)
     elif time.inputBufferAdcTime < T*2:
-        outdata[:,0] = np.sin(Csh_freq * t * 2 * np.pi)
+        audio = np.sin(Csh_freq * t * 2 * np.pi)
     elif time.inputBufferAdcTime < T*3:
-        outdata[:,0] = np.sin(E_freq * t * 2 * np.pi)
+        audio = np.sin(E_freq * t * 2 * np.pi)
 
+    #audio *= 32767 / np.max(np.abs(audio))
+    #audio = audio.astype(np.int16)
+    audio *= 2147483647 / np.max(np.abs(audio))
+    audio = audio.astype(np.int32)
+    outdata[:,0] = audio
 
-stream = sd.OutputStream(channels=1, samplerate=sample_rate,blocksize=0 ,dtype='float32',latency='high', callback=callback)
+stream = sd.OutputStream(channels=1, samplerate=sample_rate,blocksize=0 ,dtype='int32',latency='high', callback=callback)
 stream.start()
 sd.sleep(int(duration * 1000))
 stream.close()

@@ -162,8 +162,9 @@ class FourierDemoWindow(wx.Window, Knob):
         #self.canvas.callbacks.connect('button_press_event', self.mouseDown)
         #self.canvas.callbacks.connect('motion_notify_event', self.mouseMotion)
         #self.canvas.callbacks.connect('button_release_event', self.mouseUp)
-        self.state = ''
-        self.mouseInfo = (None, None, None, None)
+        #self.state = ''
+        #self.mouseInfo = (None, None, None, None)
+
         self.rootnoteindex = Param(0, minimum=0, maximum=len(tones.tones)-1)
         self.dx0 = Param(0., minimum=-10., maximum=10.)
         self.width = Param(100., minimum=1., maximum=1000.)
