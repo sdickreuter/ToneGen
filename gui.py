@@ -9,8 +9,9 @@ from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
 from matplotlib.figure import Figure
 from matplotlib.pyplot import gcf, setp
 
-import tones
-import shepard
+from tones import tones
+from shepard import ShepardTone
+from audio import Audio
 
 class Knob:
     """
@@ -121,7 +122,7 @@ class RootNoteSliderGroup(Knob):
         self.param.set(value)
 
     def setKnob(self, value):
-        self.sliderText.SetValue(list(tones.tones.keys())[value])
+        self.sliderText.SetValue(list(tones.keys())[value])
         self.slider.SetValue(value)
 
 
@@ -132,7 +133,12 @@ class FourierDemoFrame(wx.Frame):
 
         self.fourierDemoWindow = FourierDemoWindow(self)
 
+        self.audio = Audio(self.fourierDemoWindow.shepard)
+
+
         self.rootnoteSliderGroup = RootNoteSliderGroup(self, param=self.fourierDemoWindow.rootnoteindex)
+        self.octaveSliderGroup = SliderGroup(self, label='Octave index:', \
+                                                param=self.fourierDemoWindow.octaveindex)
         self.nSliderGroup = SliderGroup(self, label='Number of Octaves:', \
                                                 param=self.fourierDemoWindow.n)
         self.envelopeshiftSliderGroup = SliderGroup(self, label='Envelope shift:', \
@@ -140,9 +146,16 @@ class FourierDemoFrame(wx.Frame):
         self.envelopewidthSliderGroup = SliderGroup(self, label='Envelope width:', \
                                                 param=self.fourierDemoWindow.width)
 
+        # Play Button
+        self.playbutton =wx.ToggleButton(self, label="Play", size=(100, 30))
+        self.Bind(wx.EVT_TOGGLEBUTTON, self.OnToggle,self.playbutton)
+
+
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(self.fourierDemoWindow, 1, wx.EXPAND)
         sizer.Add(self.rootnoteSliderGroup.sizer, 0, \
+                  wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=5)
+        sizer.Add(self.octaveSliderGroup.sizer, 0, \
                   wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=5)
         sizer.Add(self.nSliderGroup.sizer, 0, \
                   wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=5)
@@ -150,12 +163,28 @@ class FourierDemoFrame(wx.Frame):
                   wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=5)
         sizer.Add(self.envelopewidthSliderGroup.sizer, 0, \
                   wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=5)
+        sizer.Add(self.playbutton, 0, \
+                  wx.SHAPED | wx.ALIGN_RIGHT | wx.ALL, border=5)
         self.SetSizer(sizer)
+
+    def OnToggle(self,event):
+       state = event.GetEventObject().GetValue()
+       if state == True:
+          self.audio.on()
+          self.nSliderGroup.slider.Enable(False)
+          self.nSliderGroup.sliderText.Enable(False)
+       else:
+          self.audio.off()
+          self.nSliderGroup.slider.Enable(True)
+          self.nSliderGroup.sliderText.Enable(True)
 
 
 class FourierDemoWindow(wx.Window, Knob):
     def __init__(self, *args, **kwargs):
         wx.Window.__init__(self, *args, **kwargs)
+
+        self.shepard = ShepardTone(list(tones.values())[0]*2**5, 1, 100, 0)
+
         self.lines = []
         self.figure = Figure()
         self.canvas = FigureCanvasWxAgg(self, -1, self.figure)
@@ -165,22 +194,32 @@ class FourierDemoWindow(wx.Window, Knob):
         #self.state = ''
         #self.mouseInfo = (None, None, None, None)
 
-        self.rootnoteindex = Param(0, minimum=0, maximum=len(tones.tones)-1)
-        self.dx0 = Param(0., minimum=-10., maximum=10.)
-        self.width = Param(100., minimum=1., maximum=1000.)
+        self.rootnoteindex = Param(0, minimum=0, maximum=len(tones)-1)
+        self.octaveindex = Param(5, minimum=1, maximum=12)
+        self.dx0 = Param(2., minimum=2., maximum=100.)
+        self.width = Param(50., minimum=2., maximum=1000.)
         self.n = Param(1, minimum=1, maximum=32)
         self.draw()
+
+
 
         # Not sure I like having two params attached to the same Knob,
         # but that is what we have here... it works but feels kludgy -
         # although maybe it's not too bad since the knob changes both params
         # at the same time (both f0 and A are affected during a drag)
         self.rootnoteindex.attach(self)
+        self.octaveindex.attach(self)
         self.dx0.attach(self)
         self.width.attach(self)
         self.n.attach(self)
 
+        #self.shepard = shepard.ShepardTone(list(tones.tones.values())[self.rootnoteindex.value], int(self.n.value),
+        #                              self.width.value, self.dx0.value)
+
+
         self.Bind(wx.EVT_SIZE, self.sizeHandler)
+
+
 
     def sizeHandler(self, *args, **kwargs):
         self.canvas.SetSize(self.GetSize())
@@ -220,7 +259,7 @@ class FourierDemoWindow(wx.Window, Knob):
             self.subplot2 = self.figure.add_subplot(212)
 
         #print(list(tones.tones.values())[self.rootnoteindex.value])
-        x1, y1, x2, y2 = self.compute(list(tones.tones.values())[self.rootnoteindex.value], int(self.n.value),
+        x1, y1, x2, y2 = self.compute(list(tones.values())[self.rootnoteindex.value]*(2**int(self.octaveindex.value)), int(self.n.value),
                                       self.width.value, self.dx0.value)
         self.line1 = self.subplot1.semilogx(x1, y1,'bo')
         self.line2 = self.subplot2.plot(x2, y2)
@@ -243,12 +282,11 @@ class FourierDemoWindow(wx.Window, Knob):
         self.figure.tight_layout()
 
     def compute(self, rootnote, n, env_x0, env_width):
-        tones = shepard.ShepardTone(rootnote,n, env_x0, env_width)
-        tones.calc_spectrum()
-        x2,y2 = tones.get_waveform()
+        self.shepard.set(rootnote,n, env_x0, env_width)
+        x2,y2 = self.shepard.get_waveform()
         #x1,y1 = tones.calc_fft(x2,y2)
-        x1 = tones.freqs
-        y1 = tones.amps
+        x1 = self.shepard.freqs
+        y1 = self.shepard.amps
         return x1, y1, x2, y2
 
     def repaint(self):
@@ -256,14 +294,14 @@ class FourierDemoWindow(wx.Window, Knob):
 
     def setKnob(self, value):
         # Note, we ignore value arg here and just go by state of the params
-        x1, y1, x2, y2 = self.compute(list(tones.tones.values())[self.rootnoteindex.value], int(self.n.value),
+        x1, y1, x2, y2 = self.compute(list(tones.values())[self.rootnoteindex.value]*(2**int(self.octaveindex.value)), int(self.n.value),
                                       self.width.value, self.dx0.value)
         #print(x1)
         #print(y1)
         setp(self.line1, xdata=x1, ydata=y1)
         setp(self.line2, xdata=x2, ydata=y2)
 
-        self.subplot1.set_xlim([x1.min(), list(tones.tones.values())[self.rootnoteindex.value]*(2**int(self.n.value))])
+        self.subplot1.set_xlim([x1.min(), list(tones.values())[self.rootnoteindex.value]*(2**int(self.octaveindex.value))*(2**int(self.n.value))])
         self.subplot1.set_ylim([y1.min(), y1.max()])
         self.subplot2.set_xlim([x2.min(), x2.max()])
         self.subplot2.set_ylim([y2.min(), y2.max()])
@@ -272,7 +310,7 @@ class FourierDemoWindow(wx.Window, Knob):
 
 class App(wx.App):
     def OnInit(self):
-        self.frame1 = FourierDemoFrame(parent=None, title="Fourier Demo", size=(700, 600))
+        self.frame1 = FourierDemoFrame(parent=None, title="Tone Generator", size=(700, 600))
         self.frame1.Show()
         return True
 

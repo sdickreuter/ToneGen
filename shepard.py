@@ -19,26 +19,34 @@ class ShepardTone(object):
         #print(self.envelope_x0)
         self.freqs = None
         self.amps = None
+        self._calc_spectrum()
 
-    def calc_spectrum(self):
+    def set(self, starting_freq, n, envelope_width, envelope_x0):
+        self.starting_freq = starting_freq
+        self.n = n
+        self.envelope_width = envelope_width
+        self.envelope_x0 = envelope_x0
+        self._calc_spectrum()
+
+    def _calc_spectrum(self):
         buf = np.arange(0,self.n)
         self.freqs = 2**buf *self.starting_freq
 
+
         if (self.n % 2) == 0:
-            self.amps = _gauss(self.freqs,self.starting_freq*(int(self.n/2))+self.envelope_x0,self.envelope_width)
+            self.amps = _gauss(np.log10(self.freqs),np.log10(self.starting_freq*(int(self.n/2)))+np.log10(self.envelope_x0),np.log10(self.envelope_width))
         else:
-            self.amps = _gauss(self.freqs,self.starting_freq+self.starting_freq*(int(self.n/2))+self.envelope_x0,self.envelope_width)
+            self.amps = _gauss(np.log10(self.freqs),np.log10(self.starting_freq+self.starting_freq*(int(self.n/2)))+np.log10(self.envelope_x0),np.log10(self.envelope_width))
 
-    def get_waveform(self):
+    def get_waveform(self,t=None):
 
-        x2 = np.linspace(0,1.0,2000)
-        y2 = np.zeros(len(x2))
+        if t is None:
+            t = np.linspace(0,1.0,500)
+        y2 = np.zeros(len(t))
         for i in range(len(self.freqs)):
-            f = self.freqs[i]
-            a = self.amps[i]
-            y2 += np.sin(f*(2*np.pi)*x2)*a
+             y2 += np.sin(self.freqs[i]*(2*np.pi)*t)*self.amps[i]
 
-        return x2,y2
+        return t,y2
 
     def calc_fft(self,x,y):
         #x2 = np.fft.fftfreq(len(self.y), d=1./len(self.x))
@@ -49,10 +57,10 @@ class ShepardTone(object):
 
 
 
+
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
     s = ShepardTone(1.0,10,1.0,0.0)
-    s.calc_spectrum()
 
     x,y = s.get_waveform()
     print(x)
@@ -60,7 +68,7 @@ if __name__ == '__main__':
     plt.plot(x,y)
     plt.show()
 
-    x,y = s.calc_fft(y)
+    x,y = s.calc_fft(x,y)
     print(x)
     print(y)
     plt.plot(x,y)

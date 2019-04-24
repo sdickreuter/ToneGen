@@ -8,7 +8,8 @@ Csh_freq = A_freq * 2 ** (4 / 12)
 E_freq = A_freq * 2 ** (7 / 12)
 
 # get timesteps for each sample, T is note duration in seconds
-sample_rate = 44100
+#sample_rate = 44100
+sample_rate = 192000 # 44100
 T = 1.0
 
 def gen_sound(time,frames):
@@ -23,7 +24,7 @@ def dump(obj):
 def callback(outdata, frames, time, status):
     if status:
         print(status)
-    #dump(time)
+    dump(time)
     #print(time.inputBufferAdcTime)
     #print(time.inputBufferAdcTime + frames/sample_rate)
     t = np.linspace(time.inputBufferAdcTime, time.inputBufferAdcTime + frames/sample_rate, frames)
@@ -36,11 +37,11 @@ def callback(outdata, frames, time, status):
 
     #audio *= 32767 / np.max(np.abs(audio))
     #audio = audio.astype(np.int16)
-    audio *= 2147483647 / np.max(np.abs(audio))
-    audio = audio.astype(np.int32)
+    #audio *= 2147483647 / np.max(np.abs(audio))
+    #audio = audio.astype(np.int32)
     outdata[:,0] = audio
 
-stream = sd.OutputStream(channels=1, samplerate=sample_rate,blocksize=0 ,dtype='int32',latency='high', callback=callback)
+stream = sd.OutputStream(channels=1, samplerate=sample_rate,blocksize=0 ,dtype='float32',latency=0.1, callback=callback)
 stream.start()
 sd.sleep(int(duration * 1000))
 stream.close()

@@ -1,39 +1,27 @@
-"""PyAudio Example: Play a wave file (callback version)."""
-
-import pyaudio
-import wave
-import time
-import sys
+import sounddevice as sd
 import numpy as np
 
-# instantiate PyAudio (1)
-p = pyaudio.PyAudio()
 
-# define callback (2)
-def callback(in_data, frame_count, time_info, status):
-    data = np.sin(np.arange(50000)/20)
-    data = data.astype(np.float32).tostring()
-    return (data, pyaudio.paContinue)
+class Audio(object):
+    def __init__(self,shepard):
+        self.sample_rate = 192000
+        self.shepard = shepard
+        self.stream = sd.OutputStream(channels=1, samplerate=self.sample_rate, blocksize=0, dtype='float32', latency=0.1,
+                                 callback=self.callback)
 
-# open stream using callback (3)
-stream = p.open(format=pyaudio.paFloat32,
-                channels=1,
-                rate=44100,
-                frames_per_buffer=1024,
-                output=True,
-                output_device_index=2,
-                stream_callback=callback)
+    def callback(self,outdata, frames, time, status):
+        if status:
+            print(status)
+        #print(time.inputBufferAdcTime)
+        t = np.linspace(time.inputBufferAdcTime, time.inputBufferAdcTime + frames/self.sample_rate, frames)
+        t,y =self.shepard.get_waveform(t)
+        y /= y.max()
+        outdata[:,0] = y
 
-# start the stream (4)
-stream.start_stream()
+    def on(self):
+        self.stream.start()
 
-# wait for stream to finish (5)
-while stream.is_active():
-    time.sleep(0.1)
+    def off(self):
+        self.stream.stop()
 
-# stop stream (6)
-stream.stop_stream()
-stream.close()
 
-# close PyAudio (7)
-p.terminate()
