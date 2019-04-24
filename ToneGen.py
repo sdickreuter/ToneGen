@@ -1,7 +1,6 @@
-import numpy as np
+#import numpy as np
 import wx
 from wx.lib import plot as wxplot
-from matplotlib.pyplot import setp
 
 import tones
 from shepard import ShepardTone

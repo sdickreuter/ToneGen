@@ -1,5 +1,5 @@
 import sounddevice as sd
-import numpy as np
+from numpy import linspace
 
 
 class Audio(object):
@@ -14,7 +14,7 @@ class Audio(object):
             print(status)
         #print(time.inputBufferAdcTime)
         #t = np.linspace(time.inputBufferAdcTime, time.inputBufferAdcTime + frames/self.sample_rate, frames)
-        t = np.linspace(time.outputBufferDacTime, time.outputBufferDacTime + frames / self.sample_rate, frames)
+        t = linspace(time.outputBufferDacTime, time.outputBufferDacTime + frames / self.sample_rate, frames)
         t,y =self.shepard.get_waveform(t)
         y /= y.max()
         outdata[:,0] = y
