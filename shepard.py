@@ -1,8 +1,8 @@
-from numpy import exp, arange, log10, linspace, zeros, pi, fft, sin, real, abs, diff
+import numpy as np
 
 def _gauss(x, x0, sigma):
     #return (1 / (sigma ** 2)) * np.exp(-(x-x0) ** 2 / sigma ** 2)
-    return exp(-(x-x0) ** 2 / sigma ** 2)
+    return np.exp(-(x-x0) ** 2 / sigma ** 2)
 
 
 class ShepardTone(object):
@@ -28,29 +28,28 @@ class ShepardTone(object):
         self._calc_spectrum()
 
     def _calc_spectrum(self):
-        buf = arange(0,self.n)
-        self.freqs = 2**buf *self.starting_freq
+        buf = np.arange(0, self.n)
+        self.freqs = 2 ** buf * self.starting_freq
 
+        x = np.arange(1, len(self.freqs)+1)
+        self.amps = _gauss(x, self.n / 2 + self.envelope_x0, self.envelope_width)
 
-        if (self.n % 2) == 0:
-            self.amps = _gauss(log10(self.freqs),log10(self.starting_freq*(int(self.n/2)))+log10(self.envelope_x0),log10(self.envelope_width))
-        else:
-            self.amps = _gauss(log10(self.freqs),log10(self.starting_freq+self.starting_freq*(int(self.n/2)))+log10(self.envelope_x0),log10(self.envelope_width))
 
     def get_waveform(self,t=None):
 
         if t is None:
-            t = linspace(0,1.0,500)
-        y2 = zeros(len(t))
+            t = np.linspace(0,0.01,1000)
+        y2 = np.zeros(len(t))
         for i in range(len(self.freqs)):
-             y2 += sin(self.freqs[i]*(2*pi)*t)*self.amps[i]
+             y2 += np.sin(self.freqs[i]*(2*np.pi)*t)*self.amps[i]
 
+        y2 /= y2.max()
         return t,y2
 
     def calc_fft(self,x,y):
         #x2 = np.fft.fftfreq(len(self.y), d=1./len(self.x))
-        x2 = fft.rfftfreq(len(y), d=diff((x))[0])
-        y2 = abs(real(fft.rfft(y)))
+        x2 = np.fft.rfftfreq(len(y), d=np.diff((x))[0])
+        y2 = abs(np.real(np.fft.rfft(y)))
 
         return x2,y2
 

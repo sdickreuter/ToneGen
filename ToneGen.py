@@ -4,7 +4,7 @@ from wx.lib import plot as wxplot
 
 import tones
 from shepard import ShepardTone
-from audio import Audio
+from audio2 import Audio
 
 class Knob:
     """
@@ -58,7 +58,7 @@ class Param:
         return value
 
 
-class SliderGroup(Knob):
+class SliderGroupInt(Knob):
     def __init__(self, parent, label, param):
         self.sliderLabel = wx.StaticText(parent, label=label)
         self.sliderText = wx.TextCtrl(parent, -1, style=wx.TE_PROCESS_ENTER)
@@ -89,6 +89,40 @@ class SliderGroup(Knob):
     def setKnob(self, value):
         self.sliderText.SetValue('%g' % value)
         self.slider.SetValue(value)
+
+
+class SliderGroupFloat(Knob):
+    def __init__(self, parent, label, param):
+        self.sliderLabel = wx.StaticText(parent, label=label)
+        self.sliderText = wx.TextCtrl(parent, -1, style=wx.TE_PROCESS_ENTER)
+        self.slider = wx.Slider(parent, -1)
+        self.slider.SetMin(param.minimum * 10)
+        self.slider.SetMax(param.maximum*10)
+        self.setKnob(param.value)
+
+        sizer = wx.BoxSizer(wx.HORIZONTAL)
+        sizer.Add(self.sliderLabel, 0, wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=2)
+        sizer.Add(self.sliderText, 0, wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=2)
+        sizer.Add(self.slider, 1, wx.EXPAND)
+        self.sizer = sizer
+
+        self.slider.Bind(wx.EVT_SLIDER, self.sliderHandler)
+        self.sliderText.Bind(wx.EVT_TEXT_ENTER, self.sliderTextHandler)
+
+        self.param = param
+        self.param.attach(self)
+
+    def sliderHandler(self, evt):
+        value = evt.GetInt()/10
+        self.param.set(value)
+
+    def sliderTextHandler(self, evt):
+        value = float(self.sliderText.GetValue())
+        self.param.set(value)
+
+    def setKnob(self, value):
+        self.sliderText.SetValue('%g' % value)
+        self.slider.SetValue(value*10)
 
 
 class RootNoteSliderGroup(Knob):
@@ -124,27 +158,27 @@ class FourierDemoFrame(wx.Frame):
     def __init__(self, *args, **kwargs):
         wx.Frame.__init__(self, *args, **kwargs)
 
-        self.plotWindow = PlotPanel(self)
+        self.plotpanel = PlotPanel(self)
 
-        self.audio = Audio(self.plotWindow.shepard)
+        self.audio = Audio(self.plotpanel.shepard)
 
 
-        self.rootnoteSliderGroup = RootNoteSliderGroup(self, param=self.plotWindow.rootnoteindex)
-        self.octaveSliderGroup = SliderGroup(self, label='Octave index:', \
-                                                param=self.plotWindow.octaveindex)
-        self.nSliderGroup = SliderGroup(self, label='Number of Octaves:', \
-                                                param=self.plotWindow.n)
-        self.envelopeshiftSliderGroup = SliderGroup(self, label='Envelope shift:', \
-                                                param=self.plotWindow.dx0)
-        self.envelopewidthSliderGroup = SliderGroup(self, label='Envelope width:', \
-                                                param=self.plotWindow.width)
+        self.rootnoteSliderGroup = RootNoteSliderGroup(self, param=self.plotpanel.rootnoteindex)
+        self.octaveSliderGroup = SliderGroupInt(self, label='Octave index:', \
+                                                param=self.plotpanel.octaveindex)
+        self.nSliderGroup = SliderGroupInt(self, label='Number of Octaves:', \
+                                           param=self.plotpanel.n)
+        self.envelopeshiftSliderGroup = SliderGroupFloat(self, label='Envelope shift:', \
+                                                         param=self.plotpanel.dx0)
+        self.envelopewidthSliderGroup = SliderGroupFloat(self, label='Envelope width:', \
+                                                         param=self.plotpanel.width)
 
         # Play Button
         self.playbutton =wx.ToggleButton(self, label="Play", size=(100, 30))
         self.Bind(wx.EVT_TOGGLEBUTTON, self.OnToggle,self.playbutton)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(self.plotWindow, 1, wx.EXPAND)
+        sizer.Add(self.plotpanel, 1, wx.EXPAND)
         sizer.Add(self.rootnoteSliderGroup.sizer, 0, \
                   wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=5)
         sizer.Add(self.octaveSliderGroup.sizer, 0, \
@@ -182,8 +216,8 @@ class PlotPanel(wx.Panel, Knob):
 
         self.rootnoteindex = Param(0, minimum=0, maximum=len(tones.names)-1)
         self.octaveindex = Param(5, minimum=1, maximum=12)
-        self.dx0 = Param(2., minimum=2., maximum=100.)
-        self.width = Param(50., minimum=2., maximum=1000.)
+        self.dx0 = Param(0.0, minimum=-10.0, maximum=10.)
+        self.width = Param(5.0, minimum=1.0, maximum=20.)
         self.n = Param(1, minimum=1, maximum=32)
         self.SetBackgroundColour("gray")
 
@@ -198,9 +232,14 @@ class PlotPanel(wx.Panel, Knob):
         self.n.attach(self)
 
         self.canvas1 = wxplot.PlotCanvas(self)
+        self.canvas1.enableAntiAliasing = True
+        #self.canvas1.enableHiRes = True
         self.canvas1.logScale = (True, False)
 
+
         self.canvas2 = wxplot.PlotCanvas(self)
+        self.canvas2.enableAntiAliasing = True
+        #self.canvas2.enableHiRes = True
 
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(self.canvas1, 1, wx.EXPAND)
@@ -211,8 +250,12 @@ class PlotPanel(wx.Panel, Knob):
     def draw(self):
         x1, y1, x2, y2 = self.compute(tones.freqs[self.rootnoteindex.value]*(2**int(self.octaveindex.value)), int(self.n.value),
                                       self.width.value, self.dx0.value)
-        self.canvas1.Draw(self.getGraphics_freqs(x1,y1))
+        self.canvas1.Draw(self.getGraphics_freqs(x1,y1),yAxis=(0,1))
+        #if len(x2) > 1:
+        #    self.canvas1.Zoom((x1.mean(), 0.0), (1.2, 1.0))
         self.canvas2.Draw(self.getGraphics_waves(x2,y2))
+        self.canvas2.Zoom((x2.mean(),y2.mean()),(1.0,1.2))
+
 
     def getGraphics_freqs(self,x_data,y_data):
         # most items require data as a list of (x, y) pairs:
@@ -252,12 +295,7 @@ class PlotPanel(wx.Panel, Knob):
         return x1, y1, x2, y2
 
     def setKnob(self, value):
-        # Note, we ignore value arg here and just go by state of the params
-        x1, y1, x2, y2 = self.compute(tones.freqs[self.rootnoteindex.value]*(2**int(self.octaveindex.value)), int(self.n.value),
-                                      self.width.value, self.dx0.value)
-
-        self.canvas1.Draw(self.getGraphics_freqs(x1,y1))
-        self.canvas2.Draw(self.getGraphics_waves(x2,y2))
+        self.draw()
 
 class App(wx.App):
     def OnInit(self):
