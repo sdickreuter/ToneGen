@@ -1,7 +1,6 @@
-#import numpy as np
+import numpy as np
 import wx
-from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
-from matplotlib.figure import Figure
+from wx.lib import plot as wxplot
 from matplotlib.pyplot import setp
 
 import tones
@@ -126,28 +125,27 @@ class FourierDemoFrame(wx.Frame):
     def __init__(self, *args, **kwargs):
         wx.Frame.__init__(self, *args, **kwargs)
 
-        self.fourierDemoWindow = FourierDemoWindow(self)
+        self.plotWindow = PlotPanel(self)
 
-        self.audio = Audio(self.fourierDemoWindow.shepard)
+        self.audio = Audio(self.plotWindow.shepard)
 
 
-        self.rootnoteSliderGroup = RootNoteSliderGroup(self, param=self.fourierDemoWindow.rootnoteindex)
+        self.rootnoteSliderGroup = RootNoteSliderGroup(self, param=self.plotWindow.rootnoteindex)
         self.octaveSliderGroup = SliderGroup(self, label='Octave index:', \
-                                                param=self.fourierDemoWindow.octaveindex)
+                                                param=self.plotWindow.octaveindex)
         self.nSliderGroup = SliderGroup(self, label='Number of Octaves:', \
-                                                param=self.fourierDemoWindow.n)
+                                                param=self.plotWindow.n)
         self.envelopeshiftSliderGroup = SliderGroup(self, label='Envelope shift:', \
-                                                param=self.fourierDemoWindow.dx0)
+                                                param=self.plotWindow.dx0)
         self.envelopewidthSliderGroup = SliderGroup(self, label='Envelope width:', \
-                                                param=self.fourierDemoWindow.width)
+                                                param=self.plotWindow.width)
 
         # Play Button
         self.playbutton =wx.ToggleButton(self, label="Play", size=(100, 30))
         self.Bind(wx.EVT_TOGGLEBUTTON, self.OnToggle,self.playbutton)
 
-
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(self.fourierDemoWindow, 1, wx.EXPAND)
+        sizer.Add(self.plotWindow, 1, wx.EXPAND)
         sizer.Add(self.rootnoteSliderGroup.sizer, 0, \
                   wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=5)
         sizer.Add(self.octaveSliderGroup.sizer, 0, \
@@ -172,31 +170,23 @@ class FourierDemoFrame(wx.Frame):
           self.audio.off()
           self.nSliderGroup.slider.Enable(True)
           self.nSliderGroup.sliderText.Enable(True)
+       #self.canvas1.Draw(self.draw1())
 
 
-class FourierDemoWindow(wx.Window, Knob):
+
+
+class PlotPanel(wx.Panel, Knob):
     def __init__(self, *args, **kwargs):
-        wx.Window.__init__(self, *args, **kwargs)
+        wx.Panel.__init__(self, *args, **kwargs)
 
         self.shepard = ShepardTone(tones.freqs[0]*2**5, 1, 100, 0)
-
-        self.lines = []
-        self.figure = Figure()
-        self.canvas = FigureCanvasWxAgg(self, -1, self.figure)
-        #self.canvas.callbacks.connect('button_press_event', self.mouseDown)
-        #self.canvas.callbacks.connect('motion_notify_event', self.mouseMotion)
-        #self.canvas.callbacks.connect('button_release_event', self.mouseUp)
-        #self.state = ''
-        #self.mouseInfo = (None, None, None, None)
 
         self.rootnoteindex = Param(0, minimum=0, maximum=len(tones.names)-1)
         self.octaveindex = Param(5, minimum=1, maximum=12)
         self.dx0 = Param(2., minimum=2., maximum=100.)
         self.width = Param(50., minimum=2., maximum=1000.)
         self.n = Param(1, minimum=1, maximum=32)
-        self.draw()
-
-
+        self.SetBackgroundColour("gray")
 
         # Not sure I like having two params attached to the same Knob,
         # but that is what we have here... it works but feels kludgy -
@@ -208,73 +198,51 @@ class FourierDemoWindow(wx.Window, Knob):
         self.width.attach(self)
         self.n.attach(self)
 
-        #self.shepard = shepard.ShepardTone(list(tones.tones.values())[self.rootnoteindex.value], int(self.n.value),
-        #                              self.width.value, self.dx0.value)
+        self.canvas1 = wxplot.PlotCanvas(self)
+        self.canvas1.logScale = (True, False)
 
+        self.canvas2 = wxplot.PlotCanvas(self)
 
-        self.Bind(wx.EVT_SIZE, self.sizeHandler)
-
-
-
-    def sizeHandler(self, *args, **kwargs):
-        self.canvas.SetSize(self.GetSize())
-    #
-    # def mouseDown(self, evt):
-    #     if self.lines[0] in self.figure.hitlist(evt):
-    #         self.state = 'frequency'
-    #     elif self.lines[1] in self.figure.hitlist(evt):
-    #         self.state = 'time'
-    #     else:
-    #         self.state = ''
-    #     self.mouseInfo = (evt.xdata, evt.ydata, max(self.f0.value, .1), self.A.value)
-    #
-    # def mouseMotion(self, evt):
-    #     if self.state == '':
-    #         return
-    #     x, y = evt.xdata, evt.ydata
-    #     if x is None:  # outside the axes
-    #         return
-    #     x0, y0, f0Init, AInit = self.mouseInfo
-    #     self.A.set(AInit + (AInit * (y - y0) / y0), self)
-    #     if self.state == 'frequency':
-    #         self.f0.set(f0Init + (f0Init * (x - x0) / x0))
-    #     elif self.state == 'time':
-    #         if (x - x0) / x0 != -1.:
-    #             self.f0.set(1. / (1. / f0Init + (1. / f0Init * (x - x0) / x0)))
-    #
-    # def mouseUp(self, evt):
-    #     self.state = ''
-    def plot_lines(self):
-        pass
-
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(self.canvas1, 1, wx.EXPAND)
+        sizer.Add(self.canvas2, 1, wx.EXPAND)
+        self.SetSizer(sizer)
+        self.draw()
 
     def draw(self):
-        if not hasattr(self, 'subplot1'):
-            self.subplot1 = self.figure.add_subplot(211)
-            self.subplot2 = self.figure.add_subplot(212)
-
-        #print(list(tones.tones.values())[self.rootnoteindex.value])
         x1, y1, x2, y2 = self.compute(tones.freqs[self.rootnoteindex.value]*(2**int(self.octaveindex.value)), int(self.n.value),
                                       self.width.value, self.dx0.value)
-        self.line1 = self.subplot1.semilogx(x1, y1,'bo')
-        self.line2 = self.subplot2.plot(x2, y2)
-        # Set some plot attributes
-        #self.subplot1.set_title("Click and drag waveforms to change frequency and amplitude", fontsize=12)
-        self.subplot1.set_ylabel("amplitude", fontsize=8)
-        self.subplot1.set_xlabel("frequency f", fontsize=8)
-        self.subplot2.set_ylabel("amplitude", fontsize=8)
-        self.subplot2.set_xlabel("time t", fontsize=8)
-        #self.subplot1.set_xlim([x1.min(), x1.max()])
-        #self.subplot1.set_ylim([0, 1])
-        #self.subplot2.set_xlim([-2, 2])
-        #self.subplot2.set_ylim([-2, 2])
-        #self.subplot1.text(0.05, .95, r'$X(f) = \mathcal{F}\{x(t)\}$', \
-        #                   verticalalignment='top', transform=self.subplot1.transAxes)
-        #self.subplot2.text(0.05, .95, r'$x(t) = a \cdot \cos(2\pi f_0 t) e^{-\pi t^2}$', \
-        #                   verticalalignment='top', transform=self.subplot2.transAxes)
-        #self.subplot1.autoscale(enable=True, axis='both')
-        #self.subplot2.autoscale(enable=True, axis='both')
-        self.figure.tight_layout()
+        self.canvas1.Draw(self.getGraphics_freqs(x1,y1))
+        self.canvas2.Draw(self.getGraphics_waves(x2,y2))
+
+    def getGraphics_freqs(self,x_data,y_data):
+        # most items require data as a list of (x, y) pairs:
+        #    [[1x, y1], [x2, y2], [x3, y3], ..., [xn, yn]]
+        xy_data = list(zip(x_data, y_data))
+
+        # Create your Poly object(s).
+        # Use keyword args to set display properties.
+        markers = wxplot.PolyMarker(xy_data,
+                                     colour='blue',
+                                     marker='circle',
+                                     size=1,
+                                     )
+        return wxplot.PlotGraphics([markers], xLabel = "frequency / Hz", yLabel = "amplitude",)
+
+    def getGraphics_waves(self, x_data, y_data):
+        # most items require data as a list of (x, y) pairs:
+        #    [[1x, y1], [x2, y2], [x3, y3], ..., [xn, yn]]
+        xy_data = list(zip(x_data, y_data))
+
+        # Create your Poly object(s).
+        # Use keyword args to set display properties.
+        line = wxplot.PolySpline(
+            xy_data,
+            colour='blue',#wx.Colour(128, 128, 0),  # Color: olive
+            width=3,
+        )
+        return wxplot.PlotGraphics([line], xLabel = "time / s", yLabel = "amplitude",)
+
 
     def compute(self, rootnote, n, env_x0, env_width):
         self.shepard.set(rootnote,n, env_x0, env_width)
@@ -284,24 +252,13 @@ class FourierDemoWindow(wx.Window, Knob):
         y1 = self.shepard.amps
         return x1, y1, x2, y2
 
-    def repaint(self):
-        self.canvas.draw()
-
     def setKnob(self, value):
         # Note, we ignore value arg here and just go by state of the params
         x1, y1, x2, y2 = self.compute(tones.freqs[self.rootnoteindex.value]*(2**int(self.octaveindex.value)), int(self.n.value),
                                       self.width.value, self.dx0.value)
-        #print(x1)
-        #print(y1)
-        setp(self.line1, xdata=x1, ydata=y1)
-        setp(self.line2, xdata=x2, ydata=y2)
 
-        self.subplot1.set_xlim([x1.min(), tones.freqs[self.rootnoteindex.value]*(2**int(self.octaveindex.value))*(2**int(self.n.value))])
-        self.subplot1.set_ylim([y1.min(), y1.max()])
-        self.subplot2.set_xlim([x2.min(), x2.max()])
-        self.subplot2.set_ylim([y2.min(), y2.max()])
-        self.repaint()
-
+        self.canvas1.Draw(self.getGraphics_freqs(x1,y1))
+        self.canvas2.Draw(self.getGraphics_waves(x2,y2))
 
 class App(wx.App):
     def OnInit(self):
