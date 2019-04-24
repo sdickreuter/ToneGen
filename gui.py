@@ -1,13 +1,8 @@
-import numpy as np
+#import numpy as np
 import wx
-
-import matplotlib
-
-matplotlib.interactive(False)
-matplotlib.use('WXAgg')
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
 from matplotlib.figure import Figure
-from matplotlib.pyplot import gcf, setp
+from matplotlib.pyplot import setp
 
 import tones
 from shepard import ShepardTone

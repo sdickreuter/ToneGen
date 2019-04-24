@@ -1,5 +1,4 @@
 import numpy as np
-import math
 
 def _gauss(x, x0, sigma):
     #return (1 / (sigma ** 2)) * np.exp(-(x-x0) ** 2 / sigma ** 2)
