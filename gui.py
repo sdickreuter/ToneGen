@@ -9,7 +9,7 @@ from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
 from matplotlib.figure import Figure
 from matplotlib.pyplot import gcf, setp
 
-from tones import tones
+import tones
 from shepard import ShepardTone
 from audio import Audio
 
@@ -122,7 +122,7 @@ class RootNoteSliderGroup(Knob):
         self.param.set(value)
 
     def setKnob(self, value):
-        self.sliderText.SetValue(list(tones.keys())[value])
+        self.sliderText.SetValue(tones.names[value])
         self.slider.SetValue(value)
 
 
@@ -183,7 +183,7 @@ class FourierDemoWindow(wx.Window, Knob):
     def __init__(self, *args, **kwargs):
         wx.Window.__init__(self, *args, **kwargs)
 
-        self.shepard = ShepardTone(list(tones.values())[0]*2**5, 1, 100, 0)
+        self.shepard = ShepardTone(tones.freqs[0]*2**5, 1, 100, 0)
 
         self.lines = []
         self.figure = Figure()
@@ -194,7 +194,7 @@ class FourierDemoWindow(wx.Window, Knob):
         #self.state = ''
         #self.mouseInfo = (None, None, None, None)
 
-        self.rootnoteindex = Param(0, minimum=0, maximum=len(tones)-1)
+        self.rootnoteindex = Param(0, minimum=0, maximum=len(tones.names)-1)
         self.octaveindex = Param(5, minimum=1, maximum=12)
         self.dx0 = Param(2., minimum=2., maximum=100.)
         self.width = Param(50., minimum=2., maximum=1000.)
@@ -259,7 +259,7 @@ class FourierDemoWindow(wx.Window, Knob):
             self.subplot2 = self.figure.add_subplot(212)
 
         #print(list(tones.tones.values())[self.rootnoteindex.value])
-        x1, y1, x2, y2 = self.compute(list(tones.values())[self.rootnoteindex.value]*(2**int(self.octaveindex.value)), int(self.n.value),
+        x1, y1, x2, y2 = self.compute(tones.freqs[self.rootnoteindex.value]*(2**int(self.octaveindex.value)), int(self.n.value),
                                       self.width.value, self.dx0.value)
         self.line1 = self.subplot1.semilogx(x1, y1,'bo')
         self.line2 = self.subplot2.plot(x2, y2)
@@ -294,14 +294,14 @@ class FourierDemoWindow(wx.Window, Knob):
 
     def setKnob(self, value):
         # Note, we ignore value arg here and just go by state of the params
-        x1, y1, x2, y2 = self.compute(list(tones.values())[self.rootnoteindex.value]*(2**int(self.octaveindex.value)), int(self.n.value),
+        x1, y1, x2, y2 = self.compute(tones.freqs[self.rootnoteindex.value]*(2**int(self.octaveindex.value)), int(self.n.value),
                                       self.width.value, self.dx0.value)
         #print(x1)
         #print(y1)
         setp(self.line1, xdata=x1, ydata=y1)
         setp(self.line2, xdata=x2, ydata=y2)
 
-        self.subplot1.set_xlim([x1.min(), list(tones.values())[self.rootnoteindex.value]*(2**int(self.octaveindex.value))*(2**int(self.n.value))])
+        self.subplot1.set_xlim([x1.min(), tones.freqs[self.rootnoteindex.value]*(2**int(self.octaveindex.value))*(2**int(self.n.value))])
         self.subplot1.set_ylim([y1.min(), y1.max()])
         self.subplot2.set_xlim([x2.min(), x2.max()])
         self.subplot2.set_ylim([y2.min(), y2.max()])

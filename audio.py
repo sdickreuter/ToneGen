@@ -13,7 +13,8 @@ class Audio(object):
         if status:
             print(status)
         #print(time.inputBufferAdcTime)
-        t = np.linspace(time.inputBufferAdcTime, time.inputBufferAdcTime + frames/self.sample_rate, frames)
+        #t = np.linspace(time.inputBufferAdcTime, time.inputBufferAdcTime + frames/self.sample_rate, frames)
+        t = np.linspace(time.outputBufferDacTime, time.outputBufferDacTime + frames / self.sample_rate, frames)
         t,y =self.shepard.get_waveform(t)
         y /= y.max()
         outdata[:,0] = y

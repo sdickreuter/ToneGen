@@ -27,7 +27,7 @@ def callback(outdata, frames, time, status):
     dump(time)
     #print(time.inputBufferAdcTime)
     #print(time.inputBufferAdcTime + frames/sample_rate)
-    t = np.linspace(time.inputBufferAdcTime, time.inputBufferAdcTime + frames/sample_rate, frames)
+    t = np.linspace(time.outputBufferDacTime, time.outputBufferDacTime + frames/sample_rate, frames)
     if time.inputBufferAdcTime < T:
         audio = np.sin(A_freq * t * 2 * np.pi)
     elif time.inputBufferAdcTime < T*2:
