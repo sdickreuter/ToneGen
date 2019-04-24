@@ -17,7 +17,7 @@ class Audio(object):
         self.stream = self.pa.open(format=pyaudio.paFloat32,
                 channels=1,
                 rate=self.sample_rate,
-                frames_per_buffer=1024,
+                frames_per_buffer=2048,
                 output=True,
                 output_device_index=5,
                 stream_callback=self.callback)

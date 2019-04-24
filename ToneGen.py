@@ -4,7 +4,7 @@ from wx.lib import plot as wxplot
 
 import tones
 from shepard import ShepardTone
-from audio2 import Audio
+from audio import Audio
 
 class Knob:
     """
