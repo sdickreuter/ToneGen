@@ -1,10 +1,10 @@
-#import numpy as np
+import time
 import wx
 from wx.lib import plot as wxplot
 
 import tones
 from shepard import ShepardTone
-from audio import Audio
+import audio2 as audio
 
 class Knob:
     """
@@ -160,7 +160,7 @@ class FourierDemoFrame(wx.Frame):
 
         self.plotpanel = PlotPanel(self)
 
-        self.audio = Audio(self.plotpanel.shepard)
+        self.audio = audio.Audio(self.plotpanel.shepard)
 
 
         self.rootnoteSliderGroup = RootNoteSliderGroup(self, param=self.plotpanel.rootnoteindex)
@@ -175,7 +175,20 @@ class FourierDemoFrame(wx.Frame):
 
         # Play Button
         self.playbutton =wx.ToggleButton(self, label="Play", size=(100, 30))
-        self.Bind(wx.EVT_TOGGLEBUTTON, self.OnToggle,self.playbutton)
+
+        # Comboboxes
+        self.device_choice = wx.Choice(self, choices=audio.device_names)
+        self.device_choice.SetSelection(audio.device_indices.index(audio.default_device))
+
+        self.samplerate_names = ['192000 Hz','96000 Hz','48000 Hz','44100 Hz','32000 Hz']
+        self.samplerate_values = [192000,96000,48000,44100,32000]
+        self.samplerate_choice = wx.Choice(self, choices=self.samplerate_names)
+        self.samplerate_choice.SetSelection(self.samplerate_values.index(44100))
+
+        self.bottomsizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.bottomsizer.Add(self.device_choice, 0, wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=2)
+        self.bottomsizer.Add(self.samplerate_choice, 0, wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=2)
+        self.bottomsizer.Add(self.playbutton, 0, wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=2)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(self.plotpanel, 1, wx.EXPAND)
@@ -189,9 +202,13 @@ class FourierDemoFrame(wx.Frame):
                   wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=5)
         sizer.Add(self.envelopewidthSliderGroup.sizer, 0, \
                   wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=5)
-        sizer.Add(self.playbutton, 0, \
+        sizer.Add(self.bottomsizer, 0, \
                   wx.SHAPED | wx.ALIGN_RIGHT | wx.ALL, border=5)
         self.SetSizer(sizer)
+
+        self.Bind(wx.EVT_TOGGLEBUTTON, self.OnToggle,self.playbutton)
+        self.device_choice.Bind(wx.EVT_CHOICE, self.OnChangeAudio)
+        self.samplerate_choice.Bind(wx.EVT_CHOICE, self.OnChangeAudio)
 
     def OnToggle(self,event):
        state = event.GetEventObject().GetValue()
@@ -199,11 +216,32 @@ class FourierDemoFrame(wx.Frame):
           self.audio.on()
           self.nSliderGroup.slider.Enable(False)
           self.nSliderGroup.sliderText.Enable(False)
+          self.device_choice.Enable(False)
+          self.samplerate_choice.Enable(False)
        else:
           self.audio.off()
           self.nSliderGroup.slider.Enable(True)
           self.nSliderGroup.sliderText.Enable(True)
+          self.device_choice.Enable(True)
+          self.samplerate_choice.Enable(True)
        #self.canvas1.Draw(self.draw1())
+
+
+    def OnChangeAudio(self, event):
+        self.playbutton.Enable(True)
+        self.audio = None
+        samplerate = self.samplerate_values[self.samplerate_choice.GetSelection()]
+        device = audio.device_indices[self.device_choice.GetSelection()]
+        for i in range(4):
+            if i == 3:
+                wx.MessageBox('Unable to open audio device', 'Error', wx.OK | wx.ICON_ERROR)
+                self.playbutton.Enable(False)
+            time.sleep(0.5)
+            try :
+                self.audio = audio.Audio(self.plotpanel.shepard,device_index=device, sample_rate=samplerate)
+                break
+            except:
+                pass
 
 
 

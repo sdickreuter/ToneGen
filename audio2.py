@@ -5,21 +5,45 @@ import sys
 import numpy as np
 
 
+pa = pyaudio.PyAudio()
+
+default_device = pa.get_default_output_device_info()['index']
+print(default_device)
+devices = []
+for i in range(pa.get_device_count()):
+    devices.append(pa.get_device_info_by_index(i))
+
+device_names = []
+device_indices = []
+devices_defaultsamplerate = []
+for d in devices:
+    if d['maxOutputChannels'] > 1:
+        device_names.append(d['name'])
+        device_indices.append(d['index'])
+        devices_defaultsamplerate.append(d['defaultSampleRate'])
+
+print(device_names)
+
+
 class Audio(object):
-    def __init__(self,shepard):
-        self.sample_rate = 192000
-        self.shepard = shepard
+    def __init__(self,shepard,device_index=None,sample_rate=None):
         self.pa = pyaudio.PyAudio()
-        print(self.pa.get_default_output_device_info())
-        for i in range(self.pa.get_device_count()):
-            print(self.pa.get_device_info_by_index(i))
+        default_device = self.pa.get_default_output_device_info()
+        if device_index is None:
+            device_index = int(default_device['index'])
+        if sample_rate is None:
+            sample_rate = int(default_device['defaultSampleRate'])
+
+        self.sample_rate = sample_rate
+        self.device_index = device_index
+        self.shepard = shepard
 
         self.stream = self.pa.open(format=pyaudio.paFloat32,
                 channels=1,
                 rate=self.sample_rate,
                 frames_per_buffer=2048,
                 output=True,
-                output_device_index=5,
+                output_device_index=self.device_index,
                 stream_callback=self.callback)
         self.stream.stop_stream()
 
