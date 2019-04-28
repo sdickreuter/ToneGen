@@ -43,7 +43,7 @@ class AudioDialog(wx.Dialog):
 
     def get_device_index(self):
         print(audio.device_indices)
-        return audio.device_indices[self.samplerate_choice.GetSelection()]
+        return audio.device_indices[self.device_choice.GetSelection()]
 
     def OnClose(self, e):
 
