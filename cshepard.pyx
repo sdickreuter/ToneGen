@@ -23,24 +23,27 @@ cdef class ShepardTone:
     cdef float[:] amps
     cdef float low_cutoff
     cdef float high_cutoff
+    cdef float volume
 
-    def __init__(self, float starting_freq, int n, float envelope_width, float envelope_x0, float low_cutoff = -1.0, float high_cutoff=-1.0):
+    def __init__(self, float starting_freq, int n, float envelope_width, float envelope_x0, float volume = 0.5, float low_cutoff = -1.0, float high_cutoff=-1.0):
         self.starting_freq = starting_freq
         self.n = n
         self.envelope_width = envelope_width
         self.envelope_x0 = envelope_x0
         self.low_cutoff = low_cutoff
         self.high_cutoff = high_cutoff
+        self.volume = volume
         self._calc_spectrum()
 
 
-    def set(self, float starting_freq, int n, float envelope_width, float envelope_x0, float low_cutoff = -1.0, float high_cutoff=-1.0):
+    def set(self, float starting_freq, int n, float envelope_width, float envelope_x0, float volume = 0.5, float low_cutoff = -1.0, float high_cutoff=-1.0):
         self.starting_freq = starting_freq
         self.n = n
         self.envelope_width = envelope_width
         self.envelope_x0 = envelope_x0
         self.low_cutoff = low_cutoff
         self.high_cutoff = high_cutoff
+        self.volume = volume
         self._calc_spectrum()
 
 
@@ -71,7 +74,7 @@ cdef class ShepardTone:
                 y2[i] += sin(self.freqs[f]*(2*pi)*t[i])*self.amps[f]
 
         for i in range(len(t)):
-            y2[i] /= self.n
+            y2[i] = y2[i]/self.n)*self.volume
 
         #y /= y.max()
         return y

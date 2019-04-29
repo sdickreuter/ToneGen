@@ -4,9 +4,9 @@ from wx.lib import plot as wxplot
 import numpy as np
 import tones
 import pyximport; pyximport.install()
-import shepard as shepard
+import cshepard as shepard
 
-import audio2 as audio
+import audio as audio
 
 
 
@@ -229,6 +229,13 @@ class FourierDemoFrame(wx.Frame):
                                                          param=self.plotpanel.dx0)
         self.envelopewidthSliderGroup = SliderGroupFloat(self, label='Envelope width:', \
                                                          param=self.plotpanel.width)
+        self.volumeSliderGroup = SliderGroupFloat(self, label='Volume:', \
+                                                         param=self.plotpanel.volume)
+
+        # cutoffs
+
+
+
 
         # Play Button
         self.playbutton =wx.ToggleButton(self, label="Play", size=(100, 30))
@@ -247,6 +254,8 @@ class FourierDemoFrame(wx.Frame):
         sizer.Add(self.envelopeshiftSliderGroup.sizer, 0, \
                   wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=5)
         sizer.Add(self.envelopewidthSliderGroup.sizer, 0, \
+                  wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=5)
+        sizer.Add(self.volumeSliderGroup.sizer, 0, \
                   wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=5)
         sizer.Add(self.bottomsizer, 0, \
                   wx.SHAPED | wx.ALIGN_RIGHT | wx.ALL, border=5)
@@ -273,13 +282,14 @@ class PlotPanel(wx.Panel, Knob):
     def __init__(self, *args, **kwargs):
         wx.Panel.__init__(self, *args, **kwargs)
 
-        self.shepard = shepard.ShepardTone(tones.freqs[0]*2**5, 1, 100, 0)
+        self.shepard = shepard.ShepardTone(tones.freqs[0]*2**5, 1, 100, 0, 0.5)
 
         self.rootnoteindex = Param(0, minimum=0, maximum=len(tones.names)-1)
         self.octaveindex = Param(5, minimum=1, maximum=12)
         self.dx0 = Param(0.0, minimum=-10.0, maximum=10.)
         self.width = Param(5.0, minimum=1.0, maximum=20.)
         self.n = Param(1, minimum=1, maximum=32)
+        self.volume = Param(0.5, minimum=0.0, maximum=1.)
         self.SetBackgroundColour("gray")
 
         # Not sure I like having two params attached to the same Knob,
@@ -291,6 +301,7 @@ class PlotPanel(wx.Panel, Knob):
         self.dx0.attach(self)
         self.width.attach(self)
         self.n.attach(self)
+        self.volume.attach(self)
 
         self.canvas1 = wxplot.PlotCanvas(self)
         self.canvas1.enableAntiAliasing = True
@@ -310,7 +321,7 @@ class PlotPanel(wx.Panel, Knob):
 
     def draw(self):
         x1, y1, x2, y2 = self.compute(tones.freqs[self.rootnoteindex.value]*(2**int(self.octaveindex.value)), int(self.n.value),
-                                      self.width.value, self.dx0.value)
+                                      self.width.value, self.dx0.value, self.volume.value)
         self.canvas1.Draw(self.getGraphics_freqs(x1,y1),yAxis=(0,1))
         #if len(x2) > 1:
         #    self.canvas1.Zoom((x1.mean(), 0.0), (1.2, 1.0))
@@ -347,8 +358,8 @@ class PlotPanel(wx.Panel, Knob):
         return wxplot.PlotGraphics([line], xLabel = "time / s", yLabel = "amplitude",)
 
 
-    def compute(self, rootnote, n, env_x0, env_width):
-        self.shepard.set(rootnote,n, env_x0, env_width)
+    def compute(self, rootnote, n, env_x0, env_width, volume):
+        self.shepard.set(rootnote,n, env_x0, env_width, volume)
         t = np.linspace(0,0.01,200,dtype=np.float32)
         y2 = self.shepard.get_waveform(t)
         #print(t)
