@@ -1,10 +1,12 @@
 import time
 import wx
 from wx.lib import plot as wxplot
-
+import numpy as np
 import tones
-from shepard import ShepardTone
-import audio as audio
+import pyximport; pyximport.install()
+import shepard as shepard
+
+import audio2 as audio
 
 
 
@@ -37,6 +39,7 @@ class AudioDialog(wx.Dialog):
         #self.samplerate_choice.Bind(wx.EVT_CHOICE, self.OnChangeAudio)
         self.closeButton.Bind(wx.EVT_BUTTON, self.OnClose)
         self.sizer.Fit(self)
+        self.SetWindowStyleFlag(wx.STAY_ON_TOP|wx.SYSTEM_MENU)
 
     def get_sample_rate(self):
         return self.samplerate_values[self.samplerate_choice.GetSelection()]
@@ -210,8 +213,6 @@ class FourierDemoFrame(wx.Frame):
         self.device_index = dialog.get_device_index()
         dialog.Destroy()
 
-        print(self.sample_rate)
-        print(self.device_index)
 
         self.SetPosition((300,300))
 
@@ -272,7 +273,7 @@ class PlotPanel(wx.Panel, Knob):
     def __init__(self, *args, **kwargs):
         wx.Panel.__init__(self, *args, **kwargs)
 
-        self.shepard = ShepardTone(tones.freqs[0]*2**5, 1, 100, 0)
+        self.shepard = shepard.ShepardTone(tones.freqs[0]*2**5, 1, 100, 0)
 
         self.rootnoteindex = Param(0, minimum=0, maximum=len(tones.names)-1)
         self.octaveindex = Param(5, minimum=1, maximum=12)
@@ -348,11 +349,15 @@ class PlotPanel(wx.Panel, Knob):
 
     def compute(self, rootnote, n, env_x0, env_width):
         self.shepard.set(rootnote,n, env_x0, env_width)
-        x2,y2 = self.shepard.get_waveform()
+        t = np.linspace(0,0.01,200,dtype=np.float32)
+        y2 = self.shepard.get_waveform(t)
+        #print(t)
         #x1,y1 = tones.calc_fft(x2,y2)
-        x1 = self.shepard.freqs
-        y1 = self.shepard.amps
-        return x1, y1, x2, y2
+        #x1 = self.shepard.freqs
+        #y1 = self.shepard.amps
+        x1 = self.shepard.get_freqs()
+        y1 = self.shepard.get_amps()
+        return x1, y1, t, y2
 
     def setKnob(self, value):
         self.draw()

@@ -35,24 +35,20 @@ class ShepardTone(object):
         self.amps = _gauss(x, self.n / 2 + self.envelope_x0, self.envelope_width)
 
 
-    def get_waveform(self,t=None):
+    def get_waveform(self,t):
 
-        if t is None:
-            t = np.linspace(0,0.01,1000)
         y2 = np.zeros(len(t))
         for i in range(len(self.freqs)):
              y2 += np.sin(self.freqs[i]*(2*np.pi)*t)*self.amps[i]
 
         y2 /= y2.max()
-        return t,y2
+        return y2
 
-    def calc_fft(self,x,y):
-        #x2 = np.fft.fftfreq(len(self.y), d=1./len(self.x))
-        x2 = np.fft.rfftfreq(len(y), d=np.diff((x))[0])
-        y2 = abs(np.real(np.fft.rfft(y)))
+    def get_freqs(self):
+        return self.freqs
 
-        return x2,y2
-
+    def get_amps(self):
+        return self.amps
 
 
 

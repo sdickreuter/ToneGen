@@ -1,6 +1,5 @@
 import sounddevice as sd
-from numpy import linspace
-
+import numpy as np
 
 default_device = sd.query_hostapis(0)['default_output_device']
 
@@ -40,9 +39,10 @@ class Audio(object):
         if status:
             print(status)
         #print(time.outputBufferDacTime)
-        t = linspace(time.outputBufferDacTime, time.outputBufferDacTime + frames/self.sample_rate, frames)
+        t = np.linspace(time.outputBufferDacTime, time.outputBufferDacTime + frames/self.sample_rate, frames,dtype=np.float32)
         #t = linspace(time.outputBufferDacTime, time.outputBufferDacTime + frames / self.sample_rate, frames)
-        t,y =self.shepard.get_waveform(t)
+        y = self.shepard.get_waveform(t)
+        #print(y)
         #y /= y.max()
         outdata[:, 0] = y
         outdata[:, 1] = y

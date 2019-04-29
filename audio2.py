@@ -54,10 +54,10 @@ class Audio(object):
         #print(time.outputBufferDacTime)
         #print(time_info)
         now = time_info['output_buffer_dac_time']
-        t = np.linspace(now, now + frame_count/self.sample_rate, frame_count)
+        t = np.linspace(now, now + frame_count/self.sample_rate, frame_count,dtype=np.float32)
         #t = linspace(time.outputBufferDacTime, time.outputBufferDacTime + frames / self.sample_rate, frames)
-        t,y =self.shepard.get_waveform(t)
-        y /= y.max()
+        y =self.shepard.get_waveform(t)
+        #print(y)
         #print(self.stream.get_time())
         data = y.astype(np.float32).tostring()
         return (data, pyaudio.paContinue)
