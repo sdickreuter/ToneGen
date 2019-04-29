@@ -13,7 +13,7 @@ class AudioDialog(wx.Dialog):
     def __init__(self, *args, **kw):
         super(AudioDialog, self).__init__(*args, **kw)
 
-        self.SetSize((300, 130))
+        #self.SetSize((300, 130))
         self.SetPosition((300,300))
 
         # Comboboxes
@@ -33,10 +33,10 @@ class AudioDialog(wx.Dialog):
         self.sizer.Add(self.closeButton, 0, wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL, border=2)
 
         self.SetSizer(self.sizer)
-
         #self.device_choice.Bind(wx.EVT_CHOICE, self.OnChangeAudio)
         #self.samplerate_choice.Bind(wx.EVT_CHOICE, self.OnChangeAudio)
         self.closeButton.Bind(wx.EVT_BUTTON, self.OnClose)
+        self.sizer.Fit(self)
 
     def get_sample_rate(self):
         return self.samplerate_values[self.samplerate_choice.GetSelection()]
