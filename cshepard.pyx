@@ -50,13 +50,26 @@ cdef class ShepardTone:
     @cython.boundscheck(False)  # Deactivate bounds checking
     @cython.wraparound(False)   # Deactivate negative indexing.
     def _calc_spectrum(self):
-        self.freqs = np.zeros(self.n,dtype=np.float32)
-        self.amps = np.zeros(self.n,dtype=np.float32)
+        freqs = np.zeros(self.n,dtype=np.float32)
+        amps = np.zeros(self.n,dtype=np.float32)
+        self.freqs = freqs
+        self.amps = amps
+
         cdef int i = 0
         for i in range(self.n):
             self.freqs[i] = 2**i * self.starting_freq
 
-             
+        if self.n > 1:
+            ind = freqs >= self.low_cutoff
+            freqs = freqs[ind]
+            amps = amps[ind]
+
+            ind = freqs <= self.high_cutoff
+            freqs = freqs[ind]
+            amps = amps[ind]
+
+            self.n = len(freqs)
+
         cdef float[:] x = np.arange(1, self.n + 1,dtype=np.float32)
         self.amps = _gauss(x, self.n / 2 + self.envelope_x0, self.envelope_width)
 
@@ -66,15 +79,17 @@ cdef class ShepardTone:
     def get_waveform(self, float[:] t):
         y = np.zeros(len(t),dtype=np.float32)
         cdef float[:] y2 = y
-
         cdef int i = 0
         cdef int f = 0
-        for f in range(self.n):
-            for i in range(len(t)):
-                y2[i] += sin(self.freqs[f]*(2*pi)*t[i])*self.amps[f]
 
-        for i in range(len(t)):
-            y2[i] = (y2[i]/self.n)*self.volume
+        if self.n > 0:
+
+            for f in range(self.n):
+                for i in range(len(t)):
+                    y2[i] += sin(self.freqs[f]*(2*pi)*t[i])*self.amps[f]
+
+            for i in range(len(t)):
+                y2[i] = (y2[i]/self.n)*self.volume
 
         #y /= y.max()
         return y

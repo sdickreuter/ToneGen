@@ -202,6 +202,30 @@ class RootNoteSliderGroup(Knob):
         self.slider.SetValue(value)
 
 
+class CutoffGroup(Knob):
+    def __init__(self, parent, label, param):
+        self.Label = wx.StaticText(parent, label=label)
+        self.Text = wx.TextCtrl(parent, -1, style=wx.TE_PROCESS_ENTER)
+        self.setKnob(param.value)
+
+        sizer = wx.BoxSizer(wx.HORIZONTAL)
+        sizer.Add(self.Label, 0, wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=2)
+        sizer.Add(self.Text, 0, wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=2)
+        self.sizer = sizer
+
+        self.Text.Bind(wx.EVT_TEXT_ENTER, self.TextHandler)
+
+        self.param = param
+        self.param.attach(self)
+
+    def TextHandler(self, evt):
+        value = float(self.Text.GetValue())
+        self.param.set(value)
+
+    def setKnob(self, value):
+        self.Text.SetValue('%g' % value)
+
+
 
 class FourierDemoFrame(wx.Frame):
     def __init__(self, *args, **kwargs):
@@ -233,8 +257,13 @@ class FourierDemoFrame(wx.Frame):
                                                          param=self.plotpanel.volume)
 
         # cutoffs
-
-
+        self.lowcutoff = CutoffGroup(self, label='Low Frequency Cutoff:', \
+                                                         param=self.plotpanel.lowcutoff)
+        self.highcutoff = CutoffGroup(self, label='Low Frequency Cutoff:', \
+                                                         param=self.plotpanel.highcutoff)
+        self.cutoffsizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.cutoffsizer.Add(self.lowcutoff.sizer, 0, wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL, border=2)
+        self.cutoffsizer.Add(self.highcutoff.sizer, 0, wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL, border=2)
 
 
         # Play Button
@@ -257,6 +286,8 @@ class FourierDemoFrame(wx.Frame):
                   wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=5)
         sizer.Add(self.volumeSliderGroup.sizer, 0, \
                   wx.EXPAND | wx.ALIGN_CENTER | wx.ALL, border=5)
+        sizer.Add(self.cutoffsizer, 0, \
+                  wx.SHAPED | wx.ALIGN_RIGHT | wx.ALL, border=5)
         sizer.Add(self.bottomsizer, 0, \
                   wx.SHAPED | wx.ALIGN_RIGHT | wx.ALL, border=5)
         self.SetSizer(sizer)
@@ -282,7 +313,7 @@ class PlotPanel(wx.Panel, Knob):
     def __init__(self, *args, **kwargs):
         wx.Panel.__init__(self, *args, **kwargs)
 
-        self.shepard = shepard.ShepardTone(tones.freqs[0]*2**5, 1, 100, 0, 0.5)
+        self.shepard = shepard.ShepardTone(tones.freqs[0]*2**5, 1, 100, 0, 0.5,20.0,50000.0)
 
         self.rootnoteindex = Param(0, minimum=0, maximum=len(tones.names)-1)
         self.octaveindex = Param(5, minimum=1, maximum=12)
@@ -290,6 +321,8 @@ class PlotPanel(wx.Panel, Knob):
         self.width = Param(5.0, minimum=1.0, maximum=20.)
         self.n = Param(1, minimum=1, maximum=32)
         self.volume = Param(0.5, minimum=0.0, maximum=1.)
+        self.lowcutoff = Param(20.0, minimum=0.0, maximum=200.0)
+        self.highcutoff = Param(50000, minimum=10000, maximum=200000)
         self.SetBackgroundColour("gray")
 
         # Not sure I like having two params attached to the same Knob,
@@ -302,6 +335,8 @@ class PlotPanel(wx.Panel, Knob):
         self.width.attach(self)
         self.n.attach(self)
         self.volume.attach(self)
+        self.lowcutoff.attach(self)
+        self.highcutoff.attach(self)
 
         self.canvas1 = wxplot.PlotCanvas(self)
         self.canvas1.enableAntiAliasing = True
@@ -321,7 +356,7 @@ class PlotPanel(wx.Panel, Knob):
 
     def draw(self):
         x1, y1, x2, y2 = self.compute(tones.freqs[self.rootnoteindex.value]*(2**int(self.octaveindex.value)), int(self.n.value),
-                                      self.width.value, self.dx0.value, self.volume.value)
+                                      self.width.value, self.dx0.value, self.volume.value,self.lowcutoff.value,self.highcutoff.value)
         self.canvas1.Draw(self.getGraphics_freqs(x1,y1),yAxis=(0,1))
         #if len(x2) > 1:
         #    self.canvas1.Zoom((x1.mean(), 0.0), (1.2, 1.0))
@@ -358,8 +393,8 @@ class PlotPanel(wx.Panel, Knob):
         return wxplot.PlotGraphics([line], xLabel = "time / s", yLabel = "amplitude",)
 
 
-    def compute(self, rootnote, n, env_x0, env_width, volume):
-        self.shepard.set(rootnote,n, env_x0, env_width, volume)
+    def compute(self, rootnote, n, env_x0, env_width, volume,lowcutoff, highcutoff):
+        self.shepard.set(rootnote,n, env_x0, env_width, volume,lowcutoff, highcutoff)
         t = np.linspace(0,0.01,200,dtype=np.float32)
         y2 = self.shepard.get_waveform(t)
         #print(t)
