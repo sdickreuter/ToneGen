@@ -313,7 +313,7 @@ class PlotPanel(wx.Panel, Knob):
     def __init__(self, *args, **kwargs):
         wx.Panel.__init__(self, *args, **kwargs)
 
-        self.shepard = shepard.ShepardTone(tones.freqs[0]*2**5, 1, 100, 0, 0.5,20.0,50000.0)
+        self.shepard = shepard.ShepardTone(tones.freqs[0]*2**5, 1, 100, 0, 0.5,20.0,100000.0)
 
         self.rootnoteindex = Param(0, minimum=0, maximum=len(tones.names)-1)
         self.octaveindex = Param(5, minimum=1, maximum=12)
@@ -322,7 +322,7 @@ class PlotPanel(wx.Panel, Knob):
         self.n = Param(1, minimum=1, maximum=32)
         self.volume = Param(0.5, minimum=0.0, maximum=1.)
         self.lowcutoff = Param(20.0, minimum=0.0, maximum=200.0)
-        self.highcutoff = Param(50000, minimum=10000, maximum=200000)
+        self.highcutoff = Param(100000, minimum=10000, maximum=200000)
         self.SetBackgroundColour("gray")
 
         # Not sure I like having two params attached to the same Knob,
