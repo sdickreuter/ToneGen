@@ -74,7 +74,7 @@ cdef class ShepardTone:
                 y2[i] += sin(self.freqs[f]*(2*pi)*t[i])*self.amps[f]
 
         for i in range(len(t)):
-            y2[i] = y2[i]/self.n)*self.volume
+            y2[i] = (y2[i]/self.n)*self.volume
 
         #y /= y.max()
         return y
