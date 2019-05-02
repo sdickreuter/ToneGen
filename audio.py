@@ -3,7 +3,7 @@ import numpy as np
 import billiard as mp
 mp.forking_enable(False)
 import queue
-import cshepard as shepard
+import shepard as shepard
 import tones
 
 default_device = sd.query_hostapis(0)['default_output_device']

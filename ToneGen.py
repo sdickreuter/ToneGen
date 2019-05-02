@@ -4,7 +4,7 @@ from wx.lib import plot as wxplot
 import numpy as np
 import tones
 import pyximport; pyximport.install()
-import cshepard as shepard
+import shepard as shepard
 
 import billiard as mp
 mp.forking_enable(False)
