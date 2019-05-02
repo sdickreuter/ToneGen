@@ -6,6 +6,10 @@ import tones
 import pyximport; pyximport.install()
 import cshepard as shepard
 
+import billiard as mp
+mp.forking_enable(False)
+import queue
+
 import audio as audio
 
 
@@ -25,7 +29,7 @@ class AudioDialog(wx.Dialog):
         self.samplerate_names = ['192000 Hz', '96000 Hz', '48000 Hz', '44100 Hz', '32000 Hz']
         self.samplerate_values = [192000, 96000, 48000, 44100, 32000]
         self.samplerate_choice = wx.Choice(self, choices=self.samplerate_names)
-        self.samplerate_choice.SetSelection(self.samplerate_values.index(44100))
+        self.samplerate_choice.SetSelection(self.samplerate_values.index(192000))
 
         self.closeButton = wx.Button(self, label='Done')
 
@@ -242,7 +246,8 @@ class FourierDemoFrame(wx.Frame):
 
         self.plotpanel = PlotPanel(self)
 
-        self.audio = audio.Audio(self.plotpanel.shepard, device_index=self.device_index, sample_rate=self.sample_rate)
+
+        self.audio = audio.Audio(param_queue=self.plotpanel.param_queue, device_index=self.device_index, sample_rate=self.sample_rate)
 
         self.rootnoteSliderGroup = RootNoteSliderGroup(self, param=self.plotpanel.rootnoteindex)
         self.octaveSliderGroup = SliderGroupInt(self, label='Octave index:', \
@@ -313,7 +318,10 @@ class PlotPanel(wx.Panel, Knob):
     def __init__(self, *args, **kwargs):
         wx.Panel.__init__(self, *args, **kwargs)
 
+        self.param_queue = mp.Queue()
+
         self.shepard = shepard.ShepardTone(tones.freqs[0]*2**5, 1, 100, 0, 0.5,20.0,100000.0)
+        # starting_freq, n, envelope_width, envelope_x0, volume, low_cutoff, high_cutoff
 
         self.rootnoteindex = Param(0, minimum=0, maximum=len(tones.names)-1)
         self.octaveindex = Param(5, minimum=1, maximum=12)
@@ -323,6 +331,7 @@ class PlotPanel(wx.Panel, Knob):
         self.volume = Param(0.5, minimum=0.0, maximum=1.)
         self.lowcutoff = Param(20.0, minimum=0.0, maximum=200.0)
         self.highcutoff = Param(100000, minimum=10000, maximum=200000)
+
         self.SetBackgroundColour("gray")
 
         # Not sure I like having two params attached to the same Knob,
@@ -407,6 +416,11 @@ class PlotPanel(wx.Panel, Knob):
 
     def setKnob(self, value):
         self.draw()
+        try:
+            #self.param_queue.put((self.shepard.starting_freq, self.shepard.n, self.shepard.envelope_width, self.shepard.envelope_x0, self.shepard.volume, self.shepard.low_cutoff, self.shepard.high_cutoff))
+            self.param_queue.put((self.shepard.get_starting_freq(), self.shepard.get_n(), self.shepard.get_envelope_width(), self.shepard.get_envelope_x0(), self.shepard.get_volume(), self.shepard.get_low_cutoff(), self.shepard.get_high_cutoff()))
+        except queue.Full:
+            pass
 
 class App(wx.App):
     def OnInit(self):
@@ -415,5 +429,7 @@ class App(wx.App):
         return True
 
 
-app = App()
-app.MainLoop()
+if __name__ == '__main__':
+    mp.freeze_support()
+    app = App()
+    app.MainLoop()

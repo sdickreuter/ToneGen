@@ -1,5 +1,10 @@
 import sounddevice as sd
 import numpy as np
+import billiard as mp
+mp.forking_enable(False)
+import queue
+import cshepard as shepard
+import tones
 
 default_device = sd.query_hostapis(0)['default_output_device']
 
@@ -17,11 +22,12 @@ for i in range(len(devices)):
 
 default_samplerate = devices_defaultsamplerate[device_indices.index(default_device)]
 
+blocksize = 2048
 
 
 
 class Audio(object):
-    def __init__(self,shepard,sample_rate=None,device_index=None):
+    def __init__(self,param_queue,sample_rate=None,device_index=None):
         if device_index is None:
             device_index = default_device
         if sample_rate is None:
@@ -30,32 +36,80 @@ class Audio(object):
 
         self.sample_rate = sample_rate
         self.device_index = device_index
-        self.shepard = shepard
-        self.stream = sd.OutputStream(channels=2,device=self.device_index, samplerate=self.sample_rate, blocksize=2048, dtype='float32', latency=0.01,
-                                 callback=self.callback)
-        #print(sd.query_devices())
+        self.param_queue = param_queue
+        self.buffer_queue = mp.Queue()
 
-    def callback(self,outdata, frames, time, status):
+        self.shepard = shepard.ShepardTone(tones.freqs[0]*2**5, 1, 100, 0, 0.5,20.0,100000.0)
+        self.currentframe = 0
+
+        self.stream = sd.OutputStream(channels=2,device=self.device_index, samplerate=self.sample_rate, blocksize=blocksize, dtype='float32', latency=0.1,
+                                 callback=self._callback)
+        #print(sd.query_devices())
+        self.buffer_process = mp.Process(target=self._generate_buffer)
+        self.buffer_process.start()
+
+    def _generate_buffer(self):
+        while True:
+            while self.buffer_queue.qsize() < 5:
+                t = np.linspace(self.currentframe, self.currentframe + blocksize, blocksize, dtype=np.float32)
+                t /= self.sample_rate
+
+                self.buffer_queue.put(self.shepard.get_waveform(t))
+                self.currentframe += blocksize
+            try:
+                starting_freq, n, envelope_width, envelope_x0, volume, low_cutoff, high_cutoff = self.param_queue.get_nowait()
+                self.shepard.set(starting_freq, n, envelope_width, envelope_x0, volume, low_cutoff, high_cutoff)
+            except queue.Empty:
+                pass
+
+    # try:
+        #     name, value = self.input_queue.get_nowait()
+        #     #starting_freq, n, envelope_width, envelope_x0, volume, low_cutoff, high_cutoff
+        #
+        #     if name == 'starting_freq':
+        #         self.shepard.starting_freq = value
+        #     elif name == 'n':
+        #         self.shepard.n = value
+        #     elif name == 'envelope_width':
+        #         self.shepard.envelope_width = value
+        #     elif name == 'envelope_x0':
+        #         self.shepard.envelope_x0 = value
+        #     elif name == 'volume':
+        #         self.shepard.volume = value
+        #     elif name == 'low_cutoff':
+        #         self.shepard.low_cutoff = value
+        #     elif name == 'high_cutoff':
+        #         self.shepard.high_cutoff = value
+        # except queue.Empty:
+        #     pass
+
+
+    def _callback(self,outdata, frames, time, status):
         if status:
             print(status)
-        #print(time.outputBufferDacTime)
-        t = np.linspace(time.outputBufferDacTime, time.outputBufferDacTime + frames/self.sample_rate, frames,dtype=np.float32)
-        #t = linspace(time.outputBufferDacTime, time.outputBufferDacTime + frames / self.sample_rate, frames)
-        y = self.shepard.get_waveform(t)
-        #print(y)
-        #y /= y.max()
+
+        y = self.buffer_queue.get()
         outdata[:, 0] = y
         outdata[:, 1] = y
-        #print(self.stream.time)
 
     def on(self):
         self.stream.start()
 
     def off(self):
-        #print(self.stream.time)
         self.stream.stop()
+        for i in range(10):
+            try:
+                self.buffer_queue.get_nowait()
+            except queue.Empty:
+                break
+        self.currentframe = 0
+
+        #self.buffer_process = None
+        #print(self.stream.time)
+
 
     def __del__(self):
         self.stream = None
+        self.buffer_process.terminate()
         sd.stop()
 

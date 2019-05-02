@@ -22,7 +22,8 @@ for d in devices:
         device_indices.append(d['index'])
         devices_defaultsamplerate.append(d['defaultSampleRate'])
 
-print(device_names)
+#print(device_names)
+pa = None
 
 
 class Audio(object):

@@ -46,6 +46,27 @@ cdef class ShepardTone:
         self.volume = volume
         self._calc_spectrum()
 
+    def get_starting_freq(self):
+        return self.starting_freq
+
+    def get_n(self):
+        return self.n
+
+    def get_envelope_width(self):
+        return self.envelope_width
+
+    def get_envelope_x0(self):
+        return self.envelope_x0
+
+    def get_low_cutoff(self):
+        return self.low_cutoff
+
+    def get_high_cutoff(self):
+        return self.high_cutoff
+
+    def get_volume(self):
+        return self.volume
+
 
     @cython.boundscheck(False)  # Deactivate bounds checking
     @cython.wraparound(False)   # Deactivate negative indexing.
