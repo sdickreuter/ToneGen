@@ -6,8 +6,9 @@ import tones
 import pyximport; pyximport.install()
 import shepard as shepard
 
+#import threading as mp
 import billiard as mp
-mp.forking_enable(False)
+#mp.forking_enable(False)
 import queue
 
 import audio as audio
@@ -246,8 +247,9 @@ class FourierDemoFrame(wx.Frame):
 
         self.plotpanel = PlotPanel(self)
 
+        self.buf = audio.Buffer(self.plotpanel.param_queue,self.sample_rate)
 
-        self.audio = audio.Audio(param_queue=self.plotpanel.param_queue, device_index=self.device_index, sample_rate=self.sample_rate)
+        self.audio = audio.Audio(buffer_queue=self.buf.buffer_queue, device_index=self.device_index, sample_rate=self.sample_rate)
 
         self.rootnoteSliderGroup = RootNoteSliderGroup(self, param=self.plotpanel.rootnoteindex)
         self.octaveSliderGroup = SliderGroupInt(self, label='Octave index:', \
@@ -318,6 +320,7 @@ class PlotPanel(wx.Panel, Knob):
     def __init__(self, *args, **kwargs):
         wx.Panel.__init__(self, *args, **kwargs)
 
+        #self.param_queue = mp.Queue()
         self.param_queue = mp.Queue()
 
         self.shepard = shepard.ShepardTone(tones.freqs[0]*2**5, 1, 100, 0, 0.5,20.0,100000.0)
@@ -430,6 +433,7 @@ class App(wx.App):
 
 
 if __name__ == '__main__':
+    mp.set_start_method('spawn')
     mp.freeze_support()
     app = App()
     app.MainLoop()
