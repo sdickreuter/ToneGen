@@ -5,6 +5,7 @@ mp.forking_enable(False)
 import queue
 import shepard as shepard
 import tones
+import dill
 
 default_device = sd.query_hostapis(0)['default_output_device']
 
@@ -54,7 +55,7 @@ class Audio(object):
                 t = np.linspace(self.currentframe, self.currentframe + blocksize, blocksize, dtype=np.float32)
                 t /= self.sample_rate
 
-                self.buffer_queue.put(self.shepard.get_waveform(t))
+                self.buffer_queue.put(dill.dumps(self.shepard.get_waveform(t)))
                 self.currentframe += blocksize
             try:
                 starting_freq, n, envelope_width, envelope_x0, volume, low_cutoff, high_cutoff = self.param_queue.get_nowait()
@@ -88,7 +89,7 @@ class Audio(object):
         if status:
             print(status)
 
-        y = self.buffer_queue.get()
+        y = dill.loads(self.buffer_queue.get())
         outdata[:, 0] = y
         outdata[:, 1] = y
 
